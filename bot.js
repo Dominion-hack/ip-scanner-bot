@@ -190,7 +190,7 @@ bot.on('message', async (msg) => {
     await sleep(300);
     await bot.editMessageText(`> Extracting precise coordinate data...\n[██████████] 100%`, { chat_id: chatId, message_id: m.message_id });
 
-    const res = await axios.get(`http://ip-api.com/json/${text}?fields=66846719`);
+    const res = await axios.get(`https://ip-api.com/json/${text}?fields=66846719`, { timeout: 5000 });
     const d = res.data;
 
     if (d.status === "fail") return bot.sendMessage(chatId, "❌ Invalid IP");
