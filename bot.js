@@ -2,19 +2,11 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const fs = require('fs');
 
-const token = '8074584568:AAGwZLUVwCiyNr1SFQrygK1OrSSviH-AHww';
+const token = process.env.TOKEN;
 const OWNER_NAME = "@DominionGraphic";
-const ADMIN_ID = 8402519157; // PUT YOUR TELEGRAM ID HERE
+const ADMIN_ID = process.env.ADMIN_ID;
 
-const bot = new TelegramBot(token, {
-  polling: {
-    interval: 300,
-    autoStart: true,
-    params: {
-      timeout: 10
-    }
-  }
-});
+const bot = new TelegramBot(token, { polling: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ===== USERS DATABASE =====
@@ -238,7 +230,7 @@ bot.on('message', async (msg) => {
 
     const result = `
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈
- Data Extracted Successfully 
+ Data Extracted Successfully
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈
 
 [-] 🎯 Target IP: ${d.query}

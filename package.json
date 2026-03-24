@@ -1,0 +1,28 @@
+{
+  "name": "ip-scanner-bot",
+  "version": "1.0.0",
+  "description": "Telegram IP Scanner Bot",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "author": "DominionGraphixxx",
+  "license": "MIT",
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "node-telegram-bot-api": "^0.61.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dominion-hack/ip-scanner-bot.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Dominion-hack/ip-scanner-bot/issues"
+  },
+  "homepage": "https://github.com/Dominion-hack/ip-scanner-bot#readme"
+}
