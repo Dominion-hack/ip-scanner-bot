@@ -1,20 +1,19 @@
+// bot.js
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const fs = require('fs');
 
-const token = process.env.TOKEN;
+// ===== CONFIG =====
+const token = '8074584568:AAGwZLUVwCiyNr1SFQrygK1OrSSviH-AHww'; // Hardcoded Bot Token
 const OWNER_NAME = "@DominionGraphic";
-const ADMIN_ID = process.env.ADMIN_ID;
+const ADMIN_ID = 8402519157; // Your Telegram ID
 
 const bot = new TelegramBot(token, { polling: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ===== USERS DATABASE =====
 const USERS_FILE = "users.json";
-
-if (!fs.existsSync(USERS_FILE)) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify([]));
-}
+if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, JSON.stringify([]));
 
 function getUsers() {
   return JSON.parse(fs.readFileSync(USERS_FILE));
@@ -39,9 +38,7 @@ async function isUserJoined(userId) {
   try {
     for (let ch of REQUIRED_CHANNELS) {
       let res = await bot.getChatMember(ch, userId);
-      if (res.status === "left" || res.status === "kicked") {
-        return false;
-      }
+      if (res.status === "left" || res.status === "kicked") return false;
     }
     return true;
   } catch {
@@ -56,7 +53,6 @@ let waitingForIP = {};
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-
   addUser(userId);
 
   let joined = await isUserJoined(userId);
@@ -100,14 +96,7 @@ bot.on('callback_query', async (q) => {
 
   if (q.data === "check_join") {
     let joined = await isUserJoined(userId);
-
-    if (!joined) {
-      return bot.answerCallbackQuery(q.id, {
-        text: "❌ Join all channels first!",
-        show_alert: true
-      });
-    }
-
+    if (!joined) return bot.answerCallbackQuery(q.id, { text: "❌ Join all channels first!", show_alert: true });
     bot.answerCallbackQuery(q.id, { text: "✅ Access Granted!" });
 
     return bot.sendMessage(chatId, "Choose an option:", {
@@ -135,13 +124,9 @@ bot.on('callback_query', async (q) => {
 });
   }
 
-  if (q.data === "owner") {
-    return bot.sendMessage(chatId, `👑 Owner: ${OWNER_NAME}`);
-  }
-
+  if (q.data === "owner") return bot.sendMessage(chatId, `👑 Owner: ${OWNER_NAME}`);
   if (q.data === "scan") {
     waitingForIP[chatId] = true;
-
     return bot.sendMessage(chatId,
 `📡 Ready to scan...
 
@@ -154,10 +139,7 @@ bot.on('callback_query', async (q) => {
 
 // ===== ADMIN PANEL =====
 bot.onText(/\/admin/, (msg) => {
-  if (msg.from.id !== ADMIN_ID) {
-    return bot.sendMessage(msg.chat.id, "❌ You are not admin");
-  }
-
+  if (msg.from.id !== ADMIN_ID) return bot.sendMessage(msg.chat.id, "❌ You are not admin");
   bot.sendMessage(msg.chat.id,
 `👑 ADMIN PANEL
 
@@ -168,32 +150,22 @@ bot.onText(/\/admin/, (msg) => {
 // ===== USERS COUNT =====
 bot.onText(/\/users/, (msg) => {
   if (msg.from.id !== ADMIN_ID) return;
-
   let users = getUsers();
   bot.sendMessage(msg.chat.id, `👥 Total Users: ${users.length}`);
 });
 
 // ===== BROADCAST =====
 bot.onText(/\/broadcast (.+)/, async (msg, match) => {
-  if (msg.from.id !== ADMIN_ID) {
-    return bot.sendMessage(msg.chat.id, "❌ Admin only");
-  }
-
+  if (msg.from.id !== ADMIN_ID) return bot.sendMessage(msg.chat.id, "❌ Admin only");
   const text = match[1];
   const users = getUsers();
 
   bot.sendMessage(msg.chat.id, `📡 Broadcasting to ${users.length} users...`);
-
-  let success = 0;
-  let failed = 0;
+  let success = 0, failed = 0;
 
   for (let id of users) {
-    try {
-      await bot.sendMessage(id, `📢 Broadcast:\n\n${text}`);
-      success++;
-    } catch {
-      failed++;
-    }
+    try { await bot.sendMessage(id, `📢 Broadcast:\n\n${text}`); success++; }
+    catch { failed++; }
   }
 
   bot.sendMessage(msg.chat.id,
@@ -206,7 +178,6 @@ bot.onText(/\/broadcast (.+)/, async (msg, match) => {
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
-
   if (!waitingForIP[chatId] || !text || text.startsWith('/')) return;
   waitingForIP[chatId] = false;
 
@@ -222,10 +193,7 @@ bot.on('message', async (msg) => {
     const res = await axios.get(`http://ip-api.com/json/${text}?fields=66846719`);
     const d = res.data;
 
-    if (d.status === "fail") {
-      return bot.sendMessage(chatId, "❌ Invalid IP");
-    }
-
+    if (d.status === "fail") return bot.sendMessage(chatId, "❌ Invalid IP");
     let vpn = d.proxy || d.hosting ? "Detected (VPN/Proxy)" : "Not Detected";
 
     const result = `
@@ -249,10 +217,11 @@ bot.on('message', async (msg) => {
 
 ┈┈┈ <  ~/$${OWNER_NAME}  > ┈┈┈
 `;
-
     bot.sendMessage(chatId, result, { parse_mode: "Markdown" });
 
   } catch {
     bot.sendMessage(chatId, "⚠️ Error during scan");
   }
 });
+
+console.log("🤖 Bot started successfully and polling...");
