@@ -174,14 +174,18 @@ bot.onText(/\/broadcast (.+)/, async (msg, match) => {
 ❌ Failed: ${failed}`);
 });
 
-// ===== HANDLE IP =====
+// ===== HANDLE IP SCAN =====
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
-  const text = msg.text;
+  const text = msg.text?.trim();
+
+  // Only run if waiting for IP and text is not a command
   if (!waitingForIP[chatId] || !text || text.startsWith('/')) return;
-  waitingForIP[chatId] = false;
+
+  waitingForIP[chatId] = false; // reset waiting state
 
   try {
+    // 1️⃣ Progress simulation
     let m = await bot.sendMessage(chatId, `> Initializing data extraction...\n[███▒▒▒▒▒▒▒] 30%`);
     await sleep(300);
     await bot.editMessageText(`> Querying global ISP routing databases...\n[██████▒▒▒▒] 60%`, { chat_id: chatId, message_id: m.message_id });
@@ -190,10 +194,15 @@ bot.on('message', async (msg) => {
     await sleep(300);
     await bot.editMessageText(`> Extracting precise coordinate data...\n[██████████] 100%`, { chat_id: chatId, message_id: m.message_id });
 
+    // 2️⃣ Fetch IP data from API with HTTPS and timeout
     const res = await axios.get(`https://ip-api.com/json/${text}?fields=66846719`, { timeout: 5000 });
     const d = res.data;
 
-    if (d.status === "fail") return bot.sendMessage(chatId, "❌ Invalid IP");
+    if (!d || d.status === "fail") {
+      return bot.sendMessage(chatId, "❌ Invalid IP or unable to fetch data. Example: 8.8.8.8");
+    }
+
+    // 3️⃣ Safe property access
     let vpn = d.proxy || d.hosting ? "Detected (VPN/Proxy)" : "Not Detected";
 
     const result = `
@@ -201,27 +210,27 @@ bot.on('message', async (msg) => {
  Data Extracted Successfully
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈
 
-[-] 🎯 Target IP: ${d.query}
+[-] 🎯 Target IP: ${d.query || "N/A"}
 [-] 🖥️ Hostname: ${d.reverse || "N/A"}
-[-] 📡 Network ISP: ${d.isp}
-[-] 🏢 Organization: ${d.org}
-[-] 🌐 ASN: ${d.as}
-[-] 📍 Location: ${d.city}, ${d.country}
+[-] 📡 Network ISP: ${d.isp || "N/A"}
+[-] 🏢 Organization: ${d.org || "N/A"}
+[-] 🌐 ASN: ${d.as || "N/A"}
+[-] 📍 Location: ${d.city || "N/A"}, ${d.country || "N/A"}
 [-] 📮 Zip Code: ${d.zip || "N/A"}
-[-] ⏳ Timezone: ${d.timezone}
+[-] ⏳ Timezone: ${d.timezone || "N/A"}
 [-] 📶 Connection Type: ${d.mobile ? "Mobile" : "Broadband"}
-[-] 📍 Latitude: ${d.lat}
-[-] 🕹 Longitude: ${d.lon}
-[-] 🗺️ Map: [Open Location](https://www.google.com/maps?q=${d.lat},${d.lon})
+[-] 📍 Latitude: ${d.lat || "N/A"}
+[-] 🕹 Longitude: ${d.lon || "N/A"}
+[-] 🗺️ Map: [Open Location](https://www.google.com/maps?q=${d.lat || 0},${d.lon || 0})
 [-] 🛡️ Anonymity Layer: ${vpn}
 
-┈┈┈ <  ~/$${OWNER_NAME}  > ┈┈┈
+┈┈┈ <  ~/${OWNER_NAME}  > ┈┈┈
 `;
+
     bot.sendMessage(chatId, result, { parse_mode: "Markdown" });
 
-  } catch {
-    bot.sendMessage(chatId, "⚠️ Error during scan");
+  } catch (err) {
+    console.error(err.message); // Logs for Railway or Termux
+    bot.sendMessage(chatId, "⚠️ Could not fetch IP data. Make sure you sent a valid IP like 123.45.67.89 and your internet is active.");
   }
 });
-
-console.log("🤖 Bot started successfully and polling...");
