@@ -1,18 +1,17 @@
-// bot.js
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const fs = require('fs');
 
-// ===== CONFIG =====
-const token = '8074584568:AAGwZLUVwCiyNr1SFQrygK1OrSSviH-AHww'; // Hardcoded Bot Token
+const token = 'YOUR_BOT_TOKEN_HERE'; // <-- put your bot token
 const OWNER_NAME = "@DominionGraphic";
-const ADMIN_ID = 8402519157; // Your Telegram ID
+const ADMIN_ID = 8402519157; // <-- your Telegram ID
 
 const bot = new TelegramBot(token, { polling: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ===== USERS DATABASE =====
 const USERS_FILE = "users.json";
+
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, JSON.stringify([]));
 
 function getUsers() {
@@ -20,7 +19,7 @@ function getUsers() {
 }
 
 function addUser(id) {
-  let users = getUsers();
+  const users = getUsers();
   if (!users.includes(id)) {
     users.push(id);
     fs.writeFileSync(USERS_FILE, JSON.stringify(users));
@@ -29,15 +28,15 @@ function addUser(id) {
 
 // ===== FORCE JOIN =====
 const REQUIRED_CHANNELS = [
-  "@ROBIN_TECH_GROUP",
-  "@telex_md",
-  "@telex_MDn"
+  "@ROBIN_TECH_GROUP", // Channel
+  "@telex_md",         // Group
+  "@telex_MDn"         // Channel
 ];
 
 async function isUserJoined(userId) {
   try {
     for (let ch of REQUIRED_CHANNELS) {
-      let res = await bot.getChatMember(ch, userId);
+      const res = await bot.getChatMember(ch, userId);
       if (res.status === "left" || res.status === "kicked") return false;
     }
     return true;
@@ -53,10 +52,10 @@ let waitingForIP = {};
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+
   addUser(userId);
 
   let joined = await isUserJoined(userId);
-
   if (!joined) {
     return bot.sendMessage(chatId,
 `🚫 You must join all channels to use this bot!`,
@@ -97,6 +96,7 @@ bot.on('callback_query', async (q) => {
   if (q.data === "check_join") {
     let joined = await isUserJoined(userId);
     if (!joined) return bot.answerCallbackQuery(q.id, { text: "❌ Join all channels first!", show_alert: true });
+
     bot.answerCallbackQuery(q.id, { text: "✅ Access Granted!" });
 
     return bot.sendMessage(chatId, "Choose an option:", {
@@ -116,15 +116,12 @@ bot.on('callback_query', async (q) => {
 
 👇 Tap below to get your IP, then send it here:`,
 {
-  reply_markup: {
-    inline_keyboard: [
-      [{ text: "🌐 Get My IP", url: "https://api.ipify.org" }]
-    ]
-  }
-});
+      reply_markup: { inline_keyboard: [[{ text: "🌐 Get My IP", url: "https://api.ipify.org" }]] }
+    });
   }
 
   if (q.data === "owner") return bot.sendMessage(chatId, `👑 Owner: ${OWNER_NAME}`);
+
   if (q.data === "scan") {
     waitingForIP[chatId] = true;
     return bot.sendMessage(chatId,
@@ -140,6 +137,7 @@ bot.on('callback_query', async (q) => {
 // ===== ADMIN PANEL =====
 bot.onText(/\/admin/, (msg) => {
   if (msg.from.id !== ADMIN_ID) return bot.sendMessage(msg.chat.id, "❌ You are not admin");
+
   bot.sendMessage(msg.chat.id,
 `👑 ADMIN PANEL
 
@@ -150,28 +148,24 @@ bot.onText(/\/admin/, (msg) => {
 // ===== USERS COUNT =====
 bot.onText(/\/users/, (msg) => {
   if (msg.from.id !== ADMIN_ID) return;
-  let users = getUsers();
-  bot.sendMessage(msg.chat.id, `👥 Total Users: ${users.length}`);
+  bot.sendMessage(msg.chat.id, `👥 Total Users: ${getUsers().length}`);
 });
 
 // ===== BROADCAST =====
 bot.onText(/\/broadcast (.+)/, async (msg, match) => {
   if (msg.from.id !== ADMIN_ID) return bot.sendMessage(msg.chat.id, "❌ Admin only");
+
   const text = match[1];
   const users = getUsers();
-
   bot.sendMessage(msg.chat.id, `📡 Broadcasting to ${users.length} users...`);
-  let success = 0, failed = 0;
 
+  let success = 0, failed = 0;
   for (let id of users) {
-    try { await bot.sendMessage(id, `📢 Broadcast:\n\n${text}`); success++; }
+    try { await bot.sendMessage(id, `📢 Broadcast:\n\n${text}`); success++; } 
     catch { failed++; }
   }
 
-  bot.sendMessage(msg.chat.id,
-`✅ Done
-✔ Success: ${success}
-❌ Failed: ${failed}`);
+  bot.sendMessage(msg.chat.id, `✅ Done\n✔ Success: ${success}\n❌ Failed: ${failed}`);
 });
 
 // ===== HANDLE IP SCAN =====
@@ -179,49 +173,44 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text?.trim();
 
-  // Only run if waiting for IP and text is not a command
   if (!waitingForIP[chatId] || !text || text.startsWith('/')) return;
+  waitingForIP[chatId] = false;
 
-  waitingForIP[chatId] = false; // reset waiting state
+  const ipRegex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+  if (!ipRegex.test(text)) return bot.sendMessage(chatId, "⚠️ Send a valid IP like 8.8.8.8");
 
   try {
-    // 1️⃣ Progress simulation
-    let m = await bot.sendMessage(chatId, `> Initializing data extraction...\n[███▒▒▒▒▒▒▒] 30%`);
+    let m = await bot.sendMessage(chatId, "> Initializing scan...\n[███▒▒▒▒▒▒▒] 30%");
     await sleep(300);
-    await bot.editMessageText(`> Querying global ISP routing databases...\n[██████▒▒▒▒] 60%`, { chat_id: chatId, message_id: m.message_id });
+    await bot.editMessageText("> Querying ISP & location...\n[██████▒▒▒▒] 60%", { chat_id: chatId, message_id: m.message_id });
     await sleep(300);
-    await bot.editMessageText(`> Cross-referencing geolocation records...\n[████████▒▒] 80%`, { chat_id: chatId, message_id: m.message_id });
+    await bot.editMessageText("> Extracting coordinates...\n[████████▒▒] 80%", { chat_id: chatId, message_id: m.message_id });
     await sleep(300);
-    await bot.editMessageText(`> Extracting precise coordinate data...\n[██████████] 100%`, { chat_id: chatId, message_id: m.message_id });
+    await bot.editMessageText("> Complete!\n[██████████] 100%", { chat_id: chatId, message_id: m.message_id });
 
-    // 2️⃣ Fetch IP data from API with HTTPS and timeout
-    const res = await axios.get(`https://ip-api.com/json/${text}?fields=66846719`, { timeout: 5000 });
+    const res = await axios.get(`https://ipwho.is/${text}`, { timeout: 5000 });
     const d = res.data;
+    if (!d || !d.success) return bot.sendMessage(chatId, "❌ Could not fetch IP data.");
 
-    if (!d || d.status === "fail") {
-      return bot.sendMessage(chatId, "❌ Invalid IP or unable to fetch data. Example: 8.8.8.8");
-    }
-
-    // 3️⃣ Safe property access
-    let vpn = d.proxy || d.hosting ? "Detected (VPN/Proxy)" : "Not Detected";
+    let vpn = d.connection?.proxy || d.connection?.hosting ? "Detected (VPN/Proxy)" : "Not Detected";
 
     const result = `
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+┈┈┈┈┈┈┈┈┈┈
  Data Extracted Successfully
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+┈┈┈┈┈┈┈┈┈┈
 
-[-] 🎯 Target IP: ${d.query || "N/A"}
-[-] 🖥️ Hostname: ${d.reverse || "N/A"}
-[-] 📡 Network ISP: ${d.isp || "N/A"}
-[-] 🏢 Organization: ${d.org || "N/A"}
-[-] 🌐 ASN: ${d.as || "N/A"}
+[-] 🎯 Target IP: ${d.ip}
+[-] 🖥️ Hostname: ${d.hostname || "N/A"}
+[-] 📡 Network ISP: ${d.connection?.isp || "N/A"}
+[-] 🏢 Organization: ${d.connection?.org || "N/A"}
+[-] 🌐 ASN: ${d.connection?.asn || "N/A"}
 [-] 📍 Location: ${d.city || "N/A"}, ${d.country || "N/A"}
-[-] 📮 Zip Code: ${d.zip || "N/A"}
-[-] ⏳ Timezone: ${d.timezone || "N/A"}
-[-] 📶 Connection Type: ${d.mobile ? "Mobile" : "Broadband"}
-[-] 📍 Latitude: ${d.lat || "N/A"}
-[-] 🕹 Longitude: ${d.lon || "N/A"}
-[-] 🗺️ Map: [Open Location](https://www.google.com/maps?q=${d.lat || 0},${d.lon || 0})
+[-] 📮 Zip Code: ${d.postal || "N/A"}
+[-] ⏳ Timezone: ${d.timezone?.id || "N/A"}
+[-] 📶 Connection Type: ${d.connection?.type || "N/A"}
+[-] 📍 Latitude: ${d.latitude}
+[-] 🕹 Longitude: ${d.longitude}
+[-] 🗺️ Map: [Open Location](https://www.google.com/maps?q=${d.latitude},${d.longitude})
 [-] 🛡️ Anonymity Layer: ${vpn}
 
 ┈┈┈ <  ~/${OWNER_NAME}  > ┈┈┈
@@ -230,7 +219,7 @@ bot.on('message', async (msg) => {
     bot.sendMessage(chatId, result, { parse_mode: "Markdown" });
 
   } catch (err) {
-    console.error(err.message); // Logs for Railway or Termux
-    bot.sendMessage(chatId, "⚠️ Could not fetch IP data. Make sure you sent a valid IP like 123.45.67.89 and your internet is active.");
+    console.error(err.message);
+    bot.sendMessage(chatId, "⚠️ Could not fetch IP. Try again later.");
   }
 });
